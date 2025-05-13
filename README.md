@@ -1,68 +1,82 @@
+# IFITV-Crawling 📺
 
-# 📺 IPTV 편성표 크롤러
+LG U+ IPTV 채널 편성표를 자동 크롤링하고, 프로그램 메타데이터(장르, 서브장르, 설명, 썸네일)를 수집하여 CSV로 저장하는 Python 기반 크롤링 프로젝트입니다.
 
-LG U+ 사이트에서 방송 프로그램 정보를 수집하고, TMDb / TVmaze / Wikipedia / NAVER 검색을 통해 **장르 및 서브장르, 설명, 썸네일** 메타데이터를 자동으로 보완하는 **IPTV 편성표 크롤링 시스템**입니다.
+## 🛠 주요 기능
 
-## 📂 구성 파일
+- LG U+ 사이트에서 각 채널의 실시간 편성표 크롤링
+- TMDb, TVmaze, NAVER, Wikipedia 기반 프로그램 정보 수집
+- 장르 및 서브장르 자동 추정 및 정제
+- 프로그램 이름 클렌징 및 런타임 계산
+- `.csv`로 저장
+- `.env` 환경변수 활용으로 API 키 보안
 
-- `crawling_live.py`  
-  → LG U+ IPTV 채널 편성표를 Selenium으로 크롤링하고 프로그램 메타데이터를 추론하여 CSV로 저장합니다.
+---
 
-- `desc_keywords.json`  
-  → 설명 키워드를 기반으로 서브장르를 추정하는 키워드 맵 파일입니다.
+## 🗂 디렉토리 구조
 
-- `requirements.txt`  
-  → 실행 환경에 필요한 라이브러리 버전 명세입니다.
+```
+project/
+│
+├── crawling_live.py             # 메인 크롤링 실행 파일
+├── desc_keywords.json           # 서브장르 추정용 키워드 정의
+├── requirements.txt             # 설치 패키지 목록
+├── .env                         # TMDb API Key 등 환경변수
+├── .gitignore                   # 민감 파일 제외
+└── data_crawling_live/         # 크롤링된 결과 저장 폴더
+```
 
 ---
 
 ## ⚙️ 설치 방법
 
 ```bash
-git clone https://github.com/yourname/iptv-crawler.git
-cd iptv-crawler
-
 # 가상환경 권장
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  # or .\venv\Scripts\activate (Windows)
 
-# 필수 라이브러리 설치
+# 필수 패키지 설치
 pip install -r requirements.txt
 ```
 
 ---
 
-## 🚀 실행 방법
+## 🔐 .env 파일 설정
+
+`.env` 파일을 프로젝트 루트에 생성하고 아래와 같이 작성합니다:
+
+```
+TMDB_API_KEY=your_tmdb_api_key_here
+```
+
+> `.env`는 `.gitignore`에 등록되어 Git에 올라가지 않습니다.
+
+---
+
+## ▶️ 실행 방법
 
 ```bash
 python crawling_live.py
 ```
 
-실행 시 `./data_crawling_live/` 디렉토리에 채널별 프로그램 CSV 파일이 생성됩니다.
+실행 후 `data_crawling_live/` 폴더에 채널별 편성표 CSV 파일이 저장됩니다.
 
 ---
 
-## 🔍 기능 요약
+## 💡 참고사항
 
-- LG U+ IPTV 웹사이트에서 방송 시간표 및 프로그램명 크롤링
-- 프로그램명 기반으로:
-  - TMDb → 영화/TV 설명 + 장르/썸네일 수집
-  - TVmaze → 보완 정보 수집
-  - Wikipedia → 한글 설명 보완
-  - NAVER 검색 → 장르/설명/썸네일 추가 수집
-- 장르와 서브장르 자동 추론 및 정합성 검증
-- 예외 처리:
-  - '모험' → '여행' 변환
-  - '뷰티' → '휴먼' 보정 등
-- `desc_keywords.json` 기반으로 설명 키워드에 따라 서브장르 추정
+- 프로그램 설명 및 장르 추정은 정확도를 높이기 위해 여러 API와 위키피디아를 병행 사용합니다.
+- 크롬 브라우저가 설치되어 있어야 하며, Selenium의 크롬 드라이버 버전이 일치해야 합니다.
 
 ---
 
-## 🧪 사용된 라이브러리
+## 📜 라이선스
 
-| 라이브러리        | 버전     |
-|------------------|----------|
-| pandas           | 2.2.2    |
-| requests         | 2.32.3   |
-| beautifulsoup4   | 4.12.3   |
-| selenium         | 4.28.1   |
+MIT License
+
+---
+
+## 👨‍💻 개발자
+
+- GitHub: [@KongKongeee](https://github.com/KongKongeee)
+- Project: `IFITV-Crawling`
