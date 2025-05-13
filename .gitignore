@@ -1,0 +1,39 @@
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.so
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual environment
+.venv/
+env/
+ENV/
+venv/
+.Python
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Crawling outputs
+data_crawling_live/
+desc_keywords.json
+
+# VSCode settings (optional)
+.vscode/
+
+# Mac folder attributes
+*.DS_Store
+
+# Windows thumbnail cache
+ehthumbs.db
+Icon?
