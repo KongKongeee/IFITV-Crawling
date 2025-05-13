@@ -11,7 +11,7 @@ import time
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriverapi
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,6 +20,9 @@ import html
 from urllib.parse import quote
 from datetime import datetime, timedelta
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
     
 # 디렉토리 생성 
 os.makedirs('./data_crawling_live', exist_ok=True)
@@ -163,7 +166,7 @@ def get_program_info_from_tmdb(title):
         title = re.sub(r'\s+', ' ', title)  # 연속 공백 정리
         return title.strip()
     
-    api_key = "1886b4752e061d6a7e3edfc4b1a4eacf"  # ← 실제 API 키로 교체
+    api_key = os.getenv("TMDB_API_KEY")
     image_base_url = "https://image.tmdb.org/t/p/w500"
     
     # 예외 처리
