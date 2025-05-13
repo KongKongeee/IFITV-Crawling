@@ -390,6 +390,8 @@ def get_program_metadata(program_name, driver, original_genre):
 
     # 설명 우선순위
     desc = max([tmdb_desc, tvmaze_desc, wiki_desc, web_desc], key=lambda x: len(x or ''))
+    
+    
 
     # 썸네일 우선순위
     thumbnail = tmdb_thumb or tvmaze_thumb or web_thumb or ''
@@ -440,6 +442,8 @@ def get_program_metadata(program_name, driver, original_genre):
             # 설명 기반 재추론 후 정합성 검사
             sub_genre = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
             sub_genre = clean_subgenre_by_genre(original_genre, sub_genre)
+
+    desc  = re.sub(r'\s+', ' ', desc).strip()
 
     return original_genre, sub_genre, desc, thumbnail
 
