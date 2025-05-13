@@ -441,6 +441,7 @@ def get_program_metadata(program_name, driver, original_genre):
             sub_genre = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
             sub_genre = clean_subgenre_by_genre(original_genre, sub_genre)
 
+    return original_genre, sub_genre, desc, thumbnail
 
 
 def calculate_runtime(programs):
@@ -543,7 +544,11 @@ for channel in channel_list:
                 
                 genre = genre_map.get(tds[2].text.strip(), tds[2].text.strip())
                 
-                original_genre, sub_genre, desc, thumbnail = get_program_metadata(name, driver, genre)
+                result = get_program_metadata(name, driver, genre)
+                if not result:
+                    print(f"[메타데이터 없음] {name}")
+                    continue
+                original_genre, sub_genre, desc, thumbnail = result
                 program_list.append([time_text, name, original_genre, sub_genre, desc, thumbnail])
                 
                 time.sleep(0.2)
