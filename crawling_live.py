@@ -27,74 +27,16 @@ load_dotenv()
 # 디렉토리 생성 
 os.makedirs('./data_crawling_live', exist_ok=True)
 
-'''
-# 서브장르 추정 키워드 (생략된 부분은 동일)
-desc_keywords = {
-    '해외드라마': ['해외드라마', '외국 드라마', '외화'],
-    '미국드라마': ['미국 드라마', '할리우드'],
-    '영국드라마': ['영국 드라마', 'BBC'],
-    '중국드라마': ['중국 드라마', '중드'],
-    '일본드라마': ['일본 드라마', '일드'],
-    '로맨스': ['사랑', '연애', '로맨스', '멜로', '첫사랑'],
-    '코미디': ['코미디', '유쾌', '웃음'],
-    '판타지': ['마법', '초능력', '이세계', '판타지'],
-    '무협': ['무협', '검술', '강호'],
-    '공포': ['공포', '호러', '귀신'],
-    '복수': ['복수', '보복'],
-    '휴먼': ['인간 드라마', '가족사', '감동', '가족', '휴먼 드라마'],
-    '범죄 스릴러_수사극': ['수사', '스릴러', '형사', '범죄'],
-    '의학': ['병원', '의사', '의학', '의료'],
-    '웹툰_소설 원작': ['웹툰 원작', '소설 원작', '동명 웹툰'],
-    '정치_권력': ['정치', '권력', '국회'],
-    '법정': ['법정', '변호사', '재판'],
-    '청춘': ['청춘', '대학생', '캠퍼스'],
-    '오피스 드라마': ['직장', '회사', '오피스'],
-    '사극_시대극': ['조선', '왕', '궁', '사극', '역사극'],
-    '타임슬립': ['타임슬립', '시간 여행'],
 
-    '버라이어티': ['버라이어티'],
-    '다큐멘터리': ['다큐멘터리', '기록', '르포'],
-    '여행': ['여행', '관광', '투어'],
-    '쿡방/먹방': ['요리', '쿡', '먹방', '맛집'],
-    '연애리얼리티': ['연애 리얼리티', '소개팅', '연애 프로그램'],
-    '게임': ['게임', 'e스포츠'],
-    '토크쇼': ['토크쇼', '인터뷰', '대화'],
-    '서바이벌': ['서바이벌', '오디션'],
-    '관찰리얼리티': ['관찰', '리얼리티', '일상 공개'],
-    '스포츠예능': ['스포츠 예능', '운동 예능'],
-    '교육예능': ['교육 예능', '공부 예능', '지식 전달'],
-    '힐링예능': ['힐링 예능', '자연 예능', '휴식'],
-    '아이돌': ['아이돌', 'K-POP'],
-    '음악서바이벌': ['음악 서바이벌', '보컬 배틀'],
-    '음악예능': ['음악 예능', '노래 예능', '스튜디오'],
-    '가족예능': ['가족 예능', '가족 리얼리티'],
-    '코미디': ['개그', '웃음 예능'],
-    '뷰티': ['뷰티', '화장', '메이크업'],
-    '애니멀': ['동물 프로그램', '반려동물'],
-    '교양': ['교양 프로그램', '지식', '정보 전달', '라이프스타일', '의학', '질병', '건강', '과학', '세계사', '인문학'],
-
-    '드라마': ['영화 드라마', '감동 실화'],
-    '로맨스': ['영화 로맨스', '사랑 이야기'],
-    '코미디': ['영화 코미디'],
-    '애니메이션': ['극장판 애니', '애니메이션 영화'],
-    '스릴러': ['스릴러 영화', '공포 스릴러'],
-    '미스터리': ['미스터리 영화', '추리'],
-    '모험': ['모험 영화', '여정'],
-    '액션': ['액션 영화', '전투'],
-    '판타지 (영화)': ['판타지 영화'],
-    'SF': ['SF 영화', '과학 판타지'],
-    '공포': ['공포 영화'],
-    '다큐멘터리': ['다큐 영화'],
-
-    '키즈': ['아이들', '어린이', '키즈', '아동용', '동요']
-}
-'''
 
 base_dir = os.path.dirname(__file__)
 file_path = os.path.join(base_dir, 'desc_keywords.json')
 
 with open(file_path, 'r', encoding='utf-8') as f:
     desc_keywords = json.load(f)
+
+USE_TMDB_DESC_PRIORITY = True
+USE_TMDB_SUBGENRE_PRIORITY = True
 
 tmdb_genre_map = {
     28: '액션',
@@ -134,6 +76,21 @@ allowed_subgenres_by_genre = {
     '보도': ['보도']
 }
 
+genre_name_to_kor = {
+                "Action": "액션",
+                "Thriller": "스릴러",
+                "Comedy": "코미디",
+                "Drama": "드라마",
+                "Romance": "로맨스",
+                "Fantasy": "판타지",
+                "Science Fiction": "SF",
+                "Mystery": "미스터리",
+                "Animation": "애니메이션",
+                "Horror": "공포",
+                "Documentary": "다큐멘터리",
+                "Adventure": "모험"
+            }
+
 def clean_subgenre_by_genre(original_genre, sub_genre):
     # 예능에 들어가면 안 되는 드라마용 서브장르
     if original_genre == '예능' and sub_genre in [
@@ -170,11 +127,11 @@ def get_program_info_from_tmdb(title):
     image_base_url = "https://image.tmdb.org/t/p/w500"
     
     # 예외 처리
-    if title == "생활의 발견":
+    if title in ["생활의 발견", "여왕의 집"]:
         endpoints = [("tv", "name"), ("movie", "title")]
     else:
-        endpoints = [("movie", "title"), ("tv", "name")]
-    
+        endpoints = [("movie", "title"), ("tv", "name")] 
+        
     cleaned_title = clean_title_for_tmdb(title)
 
     for content_type, title_key in endpoints:
@@ -202,19 +159,48 @@ def get_program_info_from_tmdb(title):
             poster_path = detail.get("poster_path")
             thumbnail = image_base_url + poster_path if poster_path else ''
 
-            genre_ids = [g["id"] for g in detail.get("genres", [])]
-            subgenres = list({tmdb_genre_map.get(gid) for gid in genre_ids if tmdb_genre_map.get(gid)})
-            sub_genre = ', '.join(subgenres)
+            genre_data = detail.get("genres", [])
             
-
-
+            # 1차: ID 기반 추출 (장르 매핑)
+            genre_ids = [g.get("id") for g in genre_data if g.get("id") is not None]
+            subgenres = list({tmdb_genre_map.get(gid) for gid in genre_ids if tmdb_genre_map.get(gid)})
+            
+            # 2차: ID 기반 실패 시, name 기반 fallback
+            if not subgenres:
+                fallback_names = [genre_name_to_kor.get(g.get("name"), '') for g in genre_data]
+                subgenres = [name for name in fallback_names if name]
+            
+            sub_genre = ', '.join(subgenres).strip()
+            
             return desc, thumbnail, sub_genre
 
         except Exception as e:
             print(f"[TMDb 오류 - {content_type.upper()}] {title}: {e}")
             continue
 
+
     return '', '', ''
+
+def validate_and_fix_subgenre(original_genre, sub_genre, desc, genre_text):
+    # TMDb나 TVmaze 등에서 들어온 sub_genre가 허용 목록에 없을 경우
+    if not sub_genre or sub_genre not in allowed_subgenres_by_genre.get(original_genre, []):
+        # 예외 케이스 보정
+        if original_genre == '예능' and sub_genre == '모험':
+            return '여행'
+        elif original_genre == '드라마' and sub_genre == '뷰티':
+            return '휴먼'
+        else:
+            # 설명 기반 재추론
+            guessed = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
+            guessed = clean_subgenre_by_genre(original_genre, guessed)
+
+            # 설명 기반 추론이 정합성 만족 시 채택
+            if guessed in allowed_subgenres_by_genre.get(original_genre, []):
+                return guessed
+            else:
+                return ''  # 둘 다 만족 못하면 빈값 처리
+    return sub_genre  # 기존 sub_genre가 유효하면 그대로 반환
+
 
 
 def get_program_info_from_tvmaze(title):
@@ -389,16 +375,19 @@ def get_program_metadata(program_name, driver, original_genre):
     web_genre, web_desc, web_thumb, genre_text = get_info_from_web_search(name)
 
     # 설명 우선순위
-    desc = max([tmdb_desc, tvmaze_desc, wiki_desc, web_desc], key=lambda x: len(x or ''))
-    
-    
+    if USE_TMDB_DESC_PRIORITY and tmdb_desc:
+        desc = tmdb_desc
+    else:
+        desc = max([tvmaze_desc, wiki_desc, web_desc], key=lambda x: len(x or ''))
 
-    # 썸네일 우선순위
+    # 썸네일 우선순위 (그대로 유지)
     thumbnail = tmdb_thumb or tvmaze_thumb or web_thumb or ''
 
-
     # 서브장르 우선순위
-    sub_genre = tmdb_sub or tvmaze_sub or wiki_sub or guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
+    if USE_TMDB_SUBGENRE_PRIORITY and tmdb_sub:
+        sub_genre = tmdb_sub
+    else:
+        sub_genre = tvmaze_sub or wiki_sub or guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
 
     # TMDb 장르가 영화일 경우 예능 서브장르 제거
     if original_genre == '영화':
@@ -427,21 +416,9 @@ def get_program_metadata(program_name, driver, original_genre):
         original_genre = '예능'
         sub_genre = '음악서바이벌'
 
-    # 장르-서브장르 정합성 보정
     sub_genre = clean_subgenre_by_genre(original_genre, sub_genre)
-    
-    # 허용되지 않은 서브장르이거나 비어있으면 재추론
-    if not sub_genre or sub_genre not in allowed_subgenres_by_genre.get(original_genre, []):
-        # 예능인데 TMDb 등에서 "모험"이 들어온 경우 → "여행"으로 대체
-        if original_genre == '예능' and sub_genre == '모험':
-            sub_genre = '여행'
-        # 드라마인데 TMDb 등에서 "뷰티" 들어온 경우 → "휴먼"
-        elif original_genre == '드라마' and sub_genre == '뷰티':
-            sub_genre = '휴먼'
-        else:
-            # 설명 기반 재추론 후 정합성 검사
-            sub_genre = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
-            sub_genre = clean_subgenre_by_genre(original_genre, sub_genre)
+    sub_genre = validate_and_fix_subgenre(original_genre, sub_genre, desc, genre_text)
+
 
     desc  = re.sub(r'\s+', ' ', desc).strip()
 
@@ -467,7 +444,8 @@ def calculate_runtime(programs):
 
 
 
-# 채널 리스트 (생략된 부분 동일)
+# 채널 리스트
+'''
 channel_list = [
     # 전국 지상파
     'KBS1[9]', 'KBS2[7]', 'MBC[11]', 'SBS[5]',
@@ -486,6 +464,8 @@ channel_list = [
     '투니버스[324]', '카툰네트워크[316]',
     '애니박스[327]', '애니맥스[326]', '어린이TV[322]'
 ]
+'''
+channel_list = ['스크린[46]']
 
 # 크롬 드라이버 설정
 options = Options()
