@@ -88,7 +88,9 @@ genre_name_to_kor = {
                 "Animation": "애니메이션",
                 "Horror": "공포",
                 "Documentary": "다큐멘터리",
-                "Adventure": "모험"
+                "Adventure": "모험",
+                "Talk": "토크쇼",
+                "Reality": "버라이어티"
             }
 
 def clean_subgenre_by_genre(original_genre, sub_genre):
@@ -127,7 +129,7 @@ def get_program_info_from_tmdb(title):
     image_base_url = "https://image.tmdb.org/t/p/w500"
     
     # 예외 처리
-    if title in ["생활의 발견", "여왕의 집"]:
+    if title in ["생활의 발견", "여왕의 집", "라디오 스타"]:
         endpoints = [("tv", "name"), ("movie", "title")]
     else:
         endpoints = [("movie", "title"), ("tv", "name")] 
@@ -182,24 +184,18 @@ def get_program_info_from_tmdb(title):
     return '', '', ''
 
 def validate_and_fix_subgenre(original_genre, sub_genre, desc, genre_text):
-    # TMDb나 TVmaze 등에서 들어온 sub_genre가 허용 목록에 없을 경우
-    if not sub_genre or sub_genre not in allowed_subgenres_by_genre.get(original_genre, []):
-        # 예외 케이스 보정
-        if original_genre == '예능' and sub_genre == '모험':
-            return '여행'
-        elif original_genre == '드라마' and sub_genre == '뷰티':
-            return '휴먼'
+    allowed_list = allowed_subgenres_by_genre.get(original_genre, [])
+    if not sub_genre or not any(
+        sg.strip() in allowed_list for sg in sub_genre.split(',')
+    ):
+        guessed = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
+        guessed = clean_subgenre_by_genre(original_genre, guessed)
+        if guessed in allowed_list:
+            return guessed
         else:
-            # 설명 기반 재추론
-            guessed = guess_subgenre_by_desc((genre_text or '') + " " + (desc or ''))
-            guessed = clean_subgenre_by_genre(original_genre, guessed)
+            return ''
+    return sub_genre
 
-            # 설명 기반 추론이 정합성 만족 시 채택
-            if guessed in allowed_subgenres_by_genre.get(original_genre, []):
-                return guessed
-            else:
-                return ''  # 둘 다 만족 못하면 빈값 처리
-    return sub_genre  # 기존 sub_genre가 유효하면 그대로 반환
 
 
 
@@ -299,7 +295,9 @@ def clean_name(text):
     text = re.sub(r'\<.*?\>', '', text)        # <내용>
     
     # ② 방송 상태 관련 단어 제거
-    text = re.sub(r'\b(일일드라마|재방송|특별판|스페셜|본방송|본|재|특집|종영|마지막회|최종화|HD|SD|NEW|다시보기)\b', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\b(수목드라마|월화드라마|일일드라마|재방송\
+                  |특별판|스페셜|본방송|본|재|특집|종영|마지막회\
+                  |최종화|HD|SD|NEW|다시보기)\b', '', text, flags=re.IGNORECASE)
     text = re.sub(r'\d+부', '', text)  # 회차 정보 제거
     
     # ③ 특수문자 정리
@@ -465,7 +463,7 @@ channel_list = [
     '애니박스[327]', '애니맥스[326]', '어린이TV[322]'
 ]
 '''
-channel_list = ['스크린[46]']
+channel_list = ['MBC[11]', '스크린[46]', 'JTBC[15]', 'tvN[3]', 'OCN[44]']
 
 # 크롬 드라이버 설정
 options = Options()
@@ -545,10 +543,10 @@ for channel in channel_list:
 
         # 결과 저장
         safe_name = re.sub(r'\s*(\[[^]]*\])', '', channel).strip()
-        df = pd.DataFrame(program_list, columns = ['방송 시간', '프로그램명', '장르', '서브장르','상영시간(분)', '설명', '썸네일'])
+        df = pd.DataFrame(program_list, columns = ['airtime', 'title', 'genre', 'subgenre','runtime', 'desc', 'thumbnail'])
         
         # 🔧 쌍따옴표 제거 + 쉼표 → 탭으로 변환
-        df['서브장르'] = df['서브장르'].apply(
+        df['subgenre'] = df['subgenre'].apply(
             lambda x: x.replace('"', '') if isinstance(x, str) else x
         )
         
