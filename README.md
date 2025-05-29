@@ -1,82 +1,86 @@
-# IFITV-Crawling 📺
+# LG U+ IPTV 채널 편성표 크롤러
 
-LG U+ IPTV 채널 편성표를 자동 크롤링하고, 프로그램 메타데이터(장르, 서브장르, 설명, 썸네일)를 수집하여 CSV로 저장하는 Python 기반 크롤링 프로젝트입니다.
-
-## 🛠 주요 기능
-
-- LG U+ 사이트에서 각 채널의 실시간 편성표 크롤링
-- TMDb, TVmaze, NAVER, Wikipedia 기반 프로그램 정보 수집
-- 장르 및 서브장르 자동 추정 및 정제
-- 프로그램 이름 클렌징 및 런타임 계산
-- `.csv`로 저장
-- `.env` 환경변수 활용으로 API 키 보안
+이 프로젝트는 **LG U+ IPTV 채널의 편성표를 자동으로 크롤링**하고, 각 프로그램의 메타데이터(설명, 장르, 서브장르, 썸네일, 출연진 등)를 **TMDb, TVmaze, Wikipedia, NAVER, Gemini API**를 통해 보완한 후 CSV 파일로 저장하는 자동화 도구입니다.
 
 ---
 
-## 🗂 디렉토리 구조
+## 📦 기능 요약
 
-```
-project/
-│
-├── crawling_live.py             # 메인 크롤링 실행 파일
-├── desc_keywords.json           # 서브장르 추정용 키워드 정의
-├── requirements.txt             # 설치 패키지 목록
-├── .env                         # TMDb API Key 등 환경변수
-├── .gitignore                   # 민감 파일 제외
-└── data_crawling_live/         # 크롤링된 결과 저장 폴더
-```
+- LG U+ 공식 웹사이트에서 **채널별 프로그램 편성표 수집**
+- 프로그램 설명 / 썸네일 / 출연진 / 장르 및 서브장르 자동 보완:
+  - TMDb API
+  - TVmaze API
+  - Wikipedia (한국어)
+  - NAVER 검색 (BeautifulSoup + Selenium)
+  - Google Gemini API (보완용)
+- 프로그램 런타임 자동 계산
+- 이상값(불일치 서브장르, 무효 설명 등) 자동 보정
+- 채널별 CSV 저장: `./data_crawling_tmdb_gemini/{채널명}_program_list.csv`
 
 ---
 
-## ⚙️ 설치 방법
+## 🛠️ 설치 및 환경 구성
 
-```bash
-# 가상환경 권장
-python -m venv venv
-source venv/bin/activate  # or .\venv\Scripts\activate (Windows)
+### 1. Python 패키지 설치
 
-# 필수 패키지 설치
 pip install -r requirements.txt
-```
 
----
+> requirements.txt 예시:
+selenium
+beautifulsoup4
+pandas
+requests
+python-dotenv
+google-generativeai
 
-## 🔐 .env 파일 설정
+### 2. ChromeDriver 설치
 
-`.env` 파일을 프로젝트 루트에 생성하고 아래와 같이 작성합니다:
+- https://chromedriver.chromium.org/downloads
+- 시스템 PATH에 추가하거나, webdriver.Chrome() 경로 직접 지정
 
-```
-TMDB_API_KEY=your_tmdb_api_key_here
-```
+### 3. .env 파일 설정
 
-> `.env`는 `.gitignore`에 등록되어 Git에 올라가지 않습니다.
+TMDB_API_KEY=YOUR_TMDB_API_KEY
+GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
 
 ---
 
 ## ▶️ 실행 방법
 
-```bash
-python crawling_live.py
-```
+python your_script_name.py
 
-실행 후 `data_crawling_live/` 폴더에 채널별 편성표 CSV 파일이 저장됩니다.
-
----
-
-## 💡 참고사항
-
-- 프로그램 설명 및 장르 추정은 정확도를 높이기 위해 여러 API와 위키피디아를 병행 사용합니다.
-- 크롬 브라우저가 설치되어 있어야 하며, Selenium의 크롬 드라이버 버전이 일치해야 합니다.
+스크립트 실행 시 모든 채널에 대해 다음 순서로 자동 처리됩니다:
+1. 웹 페이지에서 편성표 수집
+2. 프로그램명 기반 메타데이터 수집 (API + 크롤링)
+3. 정합성 검토 및 보완
+4. 채널별로 CSV 저장
 
 ---
 
-## 📜 라이선스
+## 📁 결과물 파일 구조
 
-MIT License
+data_crawling_tmdb_gemini/
+├── KBS1_program_list.csv
+├── SBS_program_list.csv
+├── ...
+
+CSV 파일 컬럼 설명:
+
+| channel | airtime | title | genre | subgenre | runtime | description | thumbnail | cast |
+|---------|---------|-------|-------|----------|---------|-------------|-----------|------|
+
+---
+
+## ⚠️ 참고사항
+
+- Gemini API 사용 시 https://makersuite.google.com/app 에서 API 키 발급
+- TMDb API는 영화/TV 기반, IPTV 특성상 일부 프로그램은 일치하지 않을 수 있음
+- headless 모드는 기본 비활성화 상태, CLI 환경에서는 주석 해제
 
 ---
 
 ## 👨‍💻 개발자
 
-- GitHub: [@KongKongeee](https://github.com/KongKongeee)
-- Project: `IFITV-Crawling`
+이경준  
+문의: your_email@example.com  
+버전: 2025.05.29
