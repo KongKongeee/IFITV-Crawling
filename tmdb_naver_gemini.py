@@ -308,47 +308,52 @@ def get_cast_list_from_naver(program_title):
 
 
 
-
+# Gemini 호출
 def fill_missing_metadata_with_gemini(program_name, original_genre, desc, sub_genre, thumbnail, age_rating, cast):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(model_name="gemini-2.0-flash-lite")
 
+    # ✅ 장르 안전 처리
+    genre_safe = original_genre if original_genre else "비어 있음"
+    genre_list = ['영화', '드라마', '예능', '애니']
+
     prompt = f"""
-    다음은 IPTV 프로그램의 메타데이터입니다. 비어 있는 항목(desc, sub_genre, thumbnail)이 있다면 추론하여 채워주세요.
+다음은 IPTV 프로그램의 메타데이터입니다. 비어 있는 항목(desc, genre, sub_genre, thumbnail 등)이 있다면 추론하여 채워주세요.
 
-    프로그램명: {program_name}
-    장르: {original_genre}
-    설명(desc): {desc or '비어 있음'}
-    서브장르(sub_genre): {sub_genre or '비어 있음'}
-    썸네일(thumbnail): {thumbnail or '비어 있음'}
-    연령등급(age_rating): {age_rating or '비어 있음'}
-    출연진(cast): {cast or '비어 있음'}
+프로그램명: {program_name}
+장르(genre): {genre_safe}
+설명(desc): {desc or '비어 있음'}
+서브장르(sub_genre): {sub_genre or '비어 있음'}
+썸네일(thumbnail): {thumbnail or '비어 있음'}
+연령등급(age_rating): {age_rating or '비어 있음'}
+출연진(cast): {cast or '비어 있음'}
 
-    가능한 서브장르 목록:
-    {', '.join(allowed_subgenres_by_genre.get(original_genre, []))}
+가능한 서브장르 목록:
+{', '.join(allowed_subgenres_by_genre.get(original_genre, []))}
 
-    ❗️주의사항:
-        - '썸네일'은 반드시 **실제 이미지 URL**일 경우에만 작성해주세요 (예: https://... 로 시작하는 주소).
-        - **추상적 이미지, 상징적 그림** 등의 일반 묘사일 경우, **무조건 "정보 없음"으로 기재**해주세요.
-        - 의미 없는 꾸밈이나 AI가 상상한 장면은 포함하지 마세요.
-        - '서브장르'는 반드시 **"가능한 서브장르 목록"에서만 추론**해주세요.
-        - '서브장르'를 알 수 없을 시 **무조건 "정보 없음"으로 기재**해주세요.
-        - '연령등급'은 **반드시 '전체 이용가', '12세 이상', '15세 이상', '19세 이상'으로 기재**해주세요
-        - 출연진에 영어 이름이 포함되어 있다면 반드시 한글 이름으로 번역해주세요. 예: "Tom Cruise" → "톰 크루즈"
+❗️주의사항:
+- '장르'가 비어 있는 경우에는 반드시 다음 중 하나로만 추론해 주세요: **{', '.join(genre_list)}**
+- '서브장르'는 반드시 **해당 장르에 속하는 사전 정의된 목록 중에서만** 추론해 주세요.
+- '썸네일'은 반드시 실제 이미지 URL만 작성해 주세요 (예: https://...).
+- AI가 상상한 이미지나 일반 묘사일 경우 '정보 없음'으로 작성하세요.
+- '연령등급'은 반드시 '전체 이용가', '12세 이상', '15세 이상', '19세 이상' 중 하나로 작성하세요.
+- 출연진에 영어 이름이 있다면 반드시 한글로 번역해 주세요 (예: Tom Cruise → 톰 크루즈).
 
-    아래 형식으로만 출력해주세요 (형식 엄수):
-    설명: ...
-    서브장르: ...
-    썸네일: ...
-    연령등급: ...
-    출연진: ...
-    """
+🧾 아래 형식으로만 출력해 주세요 (형식 엄수):
+장르: ...
+설명: ...
+서브장르: ...
+썸네일: ...
+연령등급: ...
+출연진: ...
+"""
 
     try:
         response = model.generate_content(prompt)
         content = response.text.strip()
 
-        # 초기화
+        # 초기값
+        genre_out = original_genre or "정보 없음"
         desc_out = desc or "정보 없음"
         sub_out = sub_genre or "정보 없음"
         thumb_out = thumbnail or "정보 없음"
@@ -357,7 +362,10 @@ def fill_missing_metadata_with_gemini(program_name, original_genre, desc, sub_ge
 
         lines = [line.strip() for line in content.splitlines() if line.strip()]
         for line in lines:
-            if line.startswith("설명:"):
+            if line.startswith("장르:"):
+                value = line.replace("장르:", "").strip()
+                if value: genre_out = value
+            elif line.startswith("설명:"):
                 value = line.replace("설명:", "").strip()
                 if value: desc_out = value
             elif line.startswith("서브장르:"):
@@ -373,11 +381,11 @@ def fill_missing_metadata_with_gemini(program_name, original_genre, desc, sub_ge
                 value = line.replace("출연진:", "").strip()
                 if value: cast_out = value
 
-        return desc_out, sub_out, thumb_out, age_out, cast_out
+        return genre_out, sub_out, desc_out, thumb_out, age_out, cast_out
 
     except Exception as e:
         print(f"[Gemini 오류] {program_name}: {e}")
-        return desc or "정보 없음", sub_genre or "정보 없음", thumbnail or "정보 없음", age_rating or "정보 없음", cast or "정보 없음"
+        return original_genre or "정보 없음", sub_genre or "정보 없음", desc or "정보 없음", thumbnail or "정보 없음", age_rating or "정보 없음", cast or "정보 없음"
 
 def translate_cast_to_korean(cast_english):
     if not cast_english:
@@ -435,17 +443,39 @@ def get_info_from_web_search(name):
 
     return genre, thumbnail
 
+# 메타데이터 호출
 def get_program_metadata(program_name, driver, original_genre):
     name = clean_name(program_name)
 
-    # 🎯 예외 처리: '만화' → '애니 / 키즈'
-    if original_genre == '만화':
-        original_genre = '애니'
-        sub_genre = '키즈'
-        desc, thumbnail, _, age_rating, _ = get_program_info_from_tmdb(name, original_genre)
-        cast = '정보 없음'
-        return original_genre, sub_genre, desc.strip(), thumbnail, age_rating, cast
+    # ✅ 예외처리 테이블
+    program_exceptions = {
+        '세계테마기행': {
+            'genre': '예능',
+            'desc': '단순한 여행 정보 프로그램에서 벗어나, 자유로운 배낭여행자만이 느낄 수 있는 살아있는 체험기를 전하는 다큐멘터리 프로그램',
+            'sub_genre': '여행, 다큐멘터리',
+            'thumbnail': 'https://image.tmdb.org/t/p/w500/pHC70ke34d0pEOdhcx8lnWhRtqk.jpg',
+            'age_rating': '전체 이용가',
+            'cast': '정보 없음'
+        },
+        
+    }
 
+    # ✅ 프로그램명 기반 예외처리
+    if name in program_exceptions:
+        meta = program_exceptions[name]
+        genre = meta.get('genre', original_genre)  # 없으면 기존 값 유지
+        return genre, meta['sub_genre'], meta['desc'], meta['thumbnail'], meta['age_rating'], meta['cast']
+
+    # ✅ 장르 기반 예외처리 (만화 포함)
+    if original_genre in ['스포츠', '애니', '만화']:
+        genre_map = {
+            '스포츠': ('스포츠', program_name),
+            '애니': ('키즈', program_name),
+            '만화': ('키즈', program_name),
+        }
+        sub_genre, desc = genre_map[original_genre]
+        return '애니' if original_genre == '만화' else original_genre, sub_genre, desc, '', '전체 이용가', '정보 없음'
+    
     # ✅ TMDb 단일 소스
     desc, thumbnail, sub_genre, age_rating, cast = get_program_info_from_tmdb(name, original_genre)
 
@@ -468,14 +498,26 @@ def get_program_metadata(program_name, driver, original_genre):
     if genre_text == '시사/교양':
         original_genre = '예능'
         sub_genre = '교양'
-    if sub_genre in ['어린이', 'TV만화', '키즈', '유아교육', '유아 교육', '유아/어린이']:
-        original_genre, sub_genre = '애니', '키즈'
-    if sub_genre in ['영어 회화']:
-        original_genre, sub_genre = '예능', '교육예능'
-    if original_genre == '스포츠':
-        sub_genre = '스포츠'
-    if original_genre == '보도':
-        sub_genre = '보도'
+        
+    if genre_text == '시사/보도':
+        original_genre = '보도'
+    
+    if genre_text == '애니':
+        sub_genre = '키즈'
+
+    if sub_genre and isinstance(sub_genre, str):
+        keywords = ['교육', '어린이', 'TV만화', '키즈', '유아교육', '유아 교육', '유아/어린이']
+        if any(sg.strip() in keywords for sg in sub_genre.split(',')):
+            original_genre, sub_genre = '애니', '키즈'
+
+    if sub_genre and isinstance(sub_genre, str):
+        keywords = ['영어 회화', '교육', '과학', '초급 영어', '초등', '중등', '고등']
+        if any(sg.strip() in keywords for sg in sub_genre.split(',')):
+            original_genre, sub_genre = '예능', '교육예능'
+        
+    if original_genre in ['스포츠', '보도']:
+        sub_genre = original_genre
+        desc = program_name
     if original_genre == '공연/음악':
         original_genre, sub_genre = '예능', '음악예능'
     if original_genre == '영화':
@@ -487,17 +529,14 @@ def get_program_metadata(program_name, driver, original_genre):
     sub_genre = clean_subgenre_by_genre(original_genre, sub_genre)
     sub_genre = validate_and_fix_subgenre(original_genre, sub_genre, desc, genre_text)
 
-    # ✅ 예외 처리: 보도 / 스포츠 / 애니
-    if original_genre in ['보도', '스포츠', '애니']:
-        desc = program_name
-        age_rating = '전체 이용가'
-        cast = '정보 없음'
+
 
     # ✅ Gemini 보완
-    if not desc or not sub_genre or not thumbnail or not age_rating or not cast:
-        desc, sub_genre, thumbnail, age_rating, cast = fill_missing_metadata_with_gemini(
+    if not original_genre or not desc or not sub_genre or not thumbnail or not age_rating or not cast:
+        genre_out, sub_genre, desc, thumbnail, age_rating, cast = fill_missing_metadata_with_gemini(
             program_name, original_genre, desc, sub_genre, thumbnail, age_rating, cast
         )
+        original_genre = genre_out
 
     desc = re.sub(r'\s+', ' ', desc or '').strip()
     return original_genre, sub_genre, desc, thumbnail, age_rating, cast
@@ -509,16 +548,17 @@ def get_program_metadata(program_name, driver, original_genre):
 def calculate_runtime(programs):
     new_list = []
     for i in range(len(programs)):
-        current_time = datetime.strptime(programs[i][0], "%H:%M:%S")
+        current_time = datetime.strptime(programs[i][1], "%H:%M:%S")  # time_text는 인덱스 1
         if i < len(programs) - 1:
-            next_time = datetime.strptime(programs[i + 1][0], "%H:%M:%S")
+            next_time = datetime.strptime(programs[i + 1][1], "%H:%M:%S")
             if next_time < current_time:
                 next_time += timedelta(days=1)
             runtime = int((next_time - current_time).total_seconds() / 60)
         else:
             runtime = 60
-        new_list.append(programs[i][:4] + [runtime] + programs[i][4:])
+        new_list.append(programs[i] + [runtime])  # 기존 리스트 + runtime 붙이기
     return new_list
+
 
 
 # 채널 리스트
@@ -593,10 +633,10 @@ for channel in channel_list:
                 name_parts = tds[1].text.split('\n')
                 raw_name = name_parts[1].strip() if len(name_parts) > 1 else tds[1].text.strip()
                 name = clean_name(raw_name)
-                if name in ["방송 시간이 아닙니다", "방송시간이 아닙니다."]:
+                if name in ["방송 시간이 아닙니다", "방송시간이 아닙니다.", "방송시간이 아닙니다"]:
                     continue
                 genre = genre_map.get(tds[2].text.strip(), tds[2].text.strip())
-                temp_list.append([time_text, name, genre])
+                temp_list.append([channel, time_text, name, genre])
             except Exception as e:
                 print(f"[파싱 오류] {e}")
                 continue
@@ -618,28 +658,39 @@ for channel in channel_list:
             else:
                 merged_programs.append(temp_list[i])
 
-        metadata_cache = {}
-        final_list = []
 
-        def fetch_metadata(airtime, title, genre, runtime):
+
+        def fetch_metadata(channel, airtime, title, genre, runtime, driver, metadata_cache):
             try:
-                metadata = get_program_metadata(title, driver, genre)
-                metadata_cache[title] = metadata
-                return [channel, airtime, title, *metadata[:2], runtime, *metadata[2:]]
+                # ✅ 캐시가 있으면 그대로 사용
+                if title in metadata_cache:
+                    genre_out, sub_genre, desc, thumbnail, age_rating, cast = metadata_cache[title]
+                else:
+                    # ✅ 메타데이터 추출
+                    genre_out, sub_genre, desc, thumbnail, age_rating, cast = get_program_metadata(title, driver, genre)
+                    metadata_cache[title] = (genre_out, sub_genre, desc, thumbnail, age_rating, cast)
+        
+                return [channel, airtime, title, genre_out, sub_genre, runtime, desc, thumbnail, age_rating, cast]
+        
             except Exception as e:
                 print(f"[메타데이터 오류] {title}: {e}")
                 return None
 
+
+        final_list = []
+        metadata_cache = {}
+        
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {
-                executor.submit(fetch_metadata, airtime, title, genre, runtime): title
-                for airtime, title, genre, runtime in merged_programs
+                executor.submit(fetch_metadata, channel, airtime, title, genre, runtime, driver, metadata_cache): title
+                for channel, airtime, title, genre, runtime in merged_programs
             }
+        
             for future in as_completed(futures):
                 result = future.result()
                 if result:
                     final_list.append(result)
-                time.sleep(0.1)  # API abuse 방지
+                time.sleep(0.1)  # ✅ Gemini 과다 호출 방지
 
         safe_name = re.sub(r'\s*(\[[^]]*\])', '', channel).strip()
         df = pd.DataFrame(final_list, columns = ['channel','airtime', 'title', 'genre', 'subgenre','runtime', 'description', 'thumbnail', 'age_rating', 'cast'])
